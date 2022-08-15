@@ -7,6 +7,8 @@ import compingpong.ms3.enumerations.Microservices;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -46,11 +48,46 @@ public class MessageServiceImpl implements MessageService {
         return restTemplate.postForObject(destinationUrl,message,Message.class);
     }
 
+
+
     @Override
-    public Message getDataFrom(String ms) {
-        String destinationUrl = "lb://"+ms+"/getData";
-        Message dataFromMs2 = restTemplate.getForObject(destinationUrl,Message.class);
-        dataFromMs2.setBody(dataFromMs2.getBody() + "-> MS3");
-        return dataFromMs2;
+    public Message getDataFrom(String ms, String counterString) {
+
+        Integer counter;
+        Map<String, String> params = new HashMap<>();
+
+        if (counterString == null) {
+            params.put("counter", "0");
+            counter = 0;
+            params.put("ms", ms);
+        }else{
+            counter = Integer.parseInt(counterString);
+            counter++;
+            params.put("counter", counter.toString());
+        }
+
+        if (ms != null) {
+            String nextDestination = generateRandomMicroservice();
+            params.put("ms", nextDestination);
+
+        }
+
+        if (counter < 5) {
+            String destinationUrl = "lb://" + ms + "/getDataFrom?ms={ms}&counter={counter}";
+            Message dataFromMs = restTemplate.getForObject(destinationUrl, Message.class, params.get("ms"), params.get("counter"));
+            dataFromMs.setBody(dataFromMs.getBody() + "-> MS3");
+            return dataFromMs;
+        } else {
+            Message message = new Message(UUID.randomUUID().toString(), Microservices.MS3, "MS3", 0);
+            return message;
+        }
+
+    }
+
+    @Override
+    public String generateRandomMicroservice() {
+        int randomNumber2 = (int) (Math.random() *3);
+        Microservices nextDestination = Microservices.values()[randomNumber2];
+        return nextDestination.toString();
     }
 }

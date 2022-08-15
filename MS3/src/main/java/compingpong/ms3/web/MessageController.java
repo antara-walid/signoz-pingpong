@@ -29,10 +29,10 @@ public class MessageController {
         return messageService.processMessage(message);
     }
 
-    @GetMapping("/getDataFrom{ms}")
-    Message getDataFromMS3(@PathVariable String ms)
+    @GetMapping("/getDataFrom")
+    Message getDataFromMS(@RequestParam(value = "ms",required = false) String ms,@RequestParam(value = "counter",required = false) String counter)
     {
+        return messageService.getDataFrom(ms,counter);
 
-        return messageService.getDataFrom(ms);
     }
 }

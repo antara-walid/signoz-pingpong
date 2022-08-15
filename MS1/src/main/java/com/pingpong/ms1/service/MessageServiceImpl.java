@@ -2,12 +2,16 @@ package com.pingpong.ms1.service;
 
 import com.pingpong.ms1.entity.Message;
 import com.pingpong.ms1.enumerations.Microservices;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class MessageServiceImpl implements MessageService {
     RestTemplate restTemplate;
 
@@ -19,7 +23,7 @@ public class MessageServiceImpl implements MessageService {
     public Message initialProcess() {
 
         // 1. Create the first message
-        Message initialMessage = new Message(UUID.randomUUID().toString(), Microservices.MS1,"MS1",0);
+        Message initialMessage = new Message(UUID.randomUUID().toString(), Microservices.MS1, "MS1", 0);
         // 2. Send the message
         return sendMessage(initialMessage);
     }
@@ -30,7 +34,7 @@ public class MessageServiceImpl implements MessageService {
         // 1. Concat the microService name to existing body
         String newBody = message.getBody().concat("-> MS1 ");
         // 2. Create the message to be sent with the new body
-        Message messageToBeSent = new Message(UUID.randomUUID().toString(),Microservices.MS1, newBody, message.getCounter()+1);
+        Message messageToBeSent = new Message(UUID.randomUUID().toString(), Microservices.MS1, newBody, message.getCounter() + 1);
         // 3. Send Message
         return sendMessage(messageToBeSent);
     }
@@ -40,15 +44,50 @@ public class MessageServiceImpl implements MessageService {
 
         // This methode has being made separately in order to have the ability to change the protocol used
         // in communication between microservices or the destination of requests
-        String destinationUrl = "lb://"+"DISPATCHER"+"/process";
-        return restTemplate.postForObject(destinationUrl,message,Message.class);
+        String destinationUrl = "lb://" + "DISPATCHER" + "/process";
+        return restTemplate.postForObject(destinationUrl, message, Message.class);
     }
 
     @Override
-    public Message getDataFrom(String ms) {
-        String destinationUrl = "lb://"+ms+"/getData";
-        Message dataFromMs2 = restTemplate.getForObject(destinationUrl,Message.class);
-        dataFromMs2.setBody(dataFromMs2.getBody() + "-> MS1");
-        return dataFromMs2;
+    public Message getDataFrom(String ms, String counterString) {
+
+        Integer counter;
+        Map<String, String> params = new HashMap<>();
+
+        if (counterString == null) {
+            params.put("counter", "0");
+            counter = 0;
+            params.put("ms", ms);
+        }else{
+            counter = Integer.parseInt(counterString);
+            counter++;
+            params.put("counter", counter.toString());
+        }
+
+
+
+        if (ms != null) {
+            String nextDestination = generateRandomMicroservice();
+            params.put("ms", nextDestination);
+
+        }
+
+        if (counter < 5) {
+            String destinationUrl = "lb://" + ms + "/getDataFrom?ms={ms}&counter={counter}";
+            Message dataFromMs = restTemplate.getForObject(destinationUrl, Message.class, params.get("ms"), params.get("counter"));
+            dataFromMs.setBody(dataFromMs.getBody() + "-> MS1");
+            return dataFromMs;
+        } else {
+            Message message = new Message(UUID.randomUUID().toString(), Microservices.MS1, "MS1", 0);
+            return message;
+        }
+
+    }
+
+    @Override
+    public String generateRandomMicroservice() {
+        int randomNumber2 = (int) (Math.random() * 3);
+        Microservices nextDestination = Microservices.values()[randomNumber2];
+        return nextDestination.toString();
     }
 }

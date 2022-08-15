@@ -10,5 +10,7 @@ public interface MessageService {
 
     Message sendMessage(Message message);
 
-    Message getDataFrom(String ms);
+    Message getDataFrom(String ms,String counter);
+
+    String generateRandomMicroservice();
 }
